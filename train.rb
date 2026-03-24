@@ -120,12 +120,41 @@ EPOCHS.times do |epoch|
 
     if i == 0
       puts "DEBUG: backward done, SGD update..."
+      puts "DEBUG: scale grad_w1..."
     end
     # === SGD Update ===
-    w1 = GPU.sub(w1, GPU.scale(grad_w1, LR))
-    b1 = GPU.sub(b1, GPU.scale(grad_b1, LR))
-    w2 = GPU.sub(w2, GPU.scale(grad_w2, LR))
-    b2 = GPU.sub(b2, GPU.scale(grad_b2, LR))
+    sw1 = GPU.scale(grad_w1, LR)
+    if i == 0
+      puts "DEBUG: scale grad_w1 done, sub w1..."
+    end
+    w1 = GPU.sub(w1, sw1)
+    if i == 0
+      puts "DEBUG: w1 updated, scale grad_b1..."
+    end
+    sb1 = GPU.scale(grad_b1, LR)
+    if i == 0
+      puts "DEBUG: scale grad_b1 done, sub b1..."
+    end
+    b1 = GPU.sub(b1, sb1)
+    if i == 0
+      puts "DEBUG: b1 updated, scale grad_w2..."
+    end
+    sw2 = GPU.scale(grad_w2, LR)
+    if i == 0
+      puts "DEBUG: scale grad_w2 done, sub w2..."
+    end
+    w2 = GPU.sub(w2, sw2)
+    if i == 0
+      puts "DEBUG: w2 updated, scale grad_b2..."
+    end
+    sb2 = GPU.scale(grad_b2, LR)
+    if i == 0
+      puts "DEBUG: scale grad_b2 done, sub b2..."
+    end
+    b2 = GPU.sub(b2, sb2)
+    if i == 0
+      puts "DEBUG: SGD update done"
+    end
 
     # Progress
     if (i + 1) % 10000 == 0
