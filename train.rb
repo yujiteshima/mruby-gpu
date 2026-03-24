@@ -44,16 +44,35 @@ EPOCHS.times do |epoch|
   loss_sum = 0.0
 
   N_TRAIN.times do |i|
+    if i == 0
+      puts "DEBUG: loading image 0..."
+    end
     # Load one image (784 floats) from concatenated file
     x = GPU.load("data/train_images.bin", i * INPUT, INPUT)
+    if i == 0
+      puts "DEBUG: image loaded, matmul w1*x..."
+    end
 
     # === Forward ===
     # Layer 1: h = ReLU(W1 @ x + b1)
-    h_pre = GPU.add(GPU.matmul(w1, x, HIDDEN, INPUT, 1), b1)
+    z1 = GPU.matmul(w1, x, HIDDEN, INPUT, 1)
+    if i == 0
+      puts "DEBUG: matmul done, add b1..."
+    end
+    h_pre = GPU.add(z1, b1)
+    if i == 0
+      puts "DEBUG: add done, relu..."
+    end
     h = GPU.relu(h_pre)
 
+    if i == 0
+      puts "DEBUG: relu done, layer2..."
+    end
     # Layer 2: o = W2 @ h + b2
     o = GPU.add(GPU.matmul(w2, h, CLASSES, HIDDEN, 1), b2)
+    if i == 0
+      puts "DEBUG: layer2 done, softmax..."
+    end
 
     # Softmax (Ruby side - only 10 elements)
     scores = o.head(CLASSES)
@@ -69,6 +88,9 @@ EPOCHS.times do |epoch|
     # Cross-entropy loss
     loss_sum += -Math.log(probs[label] + 1e-8)
 
+    if i == 0
+      puts "DEBUG: softmax done, backward..."
+    end
     # === Backward ===
     # dL/do = probs - one_hot(label)
     grad_o_data = probs.dup
@@ -96,6 +118,9 @@ EPOCHS.times do |epoch|
     # dL/db1 = grad_h_pre
     grad_b1 = grad_h_pre
 
+    if i == 0
+      puts "DEBUG: backward done, SGD update..."
+    end
     # === SGD Update ===
     w1 = GPU.sub(w1, GPU.scale(grad_w1, LR))
     b1 = GPU.sub(b1, GPU.scale(grad_b1, LR))
