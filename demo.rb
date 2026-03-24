@@ -4,7 +4,7 @@ puts " Raspberry Pi 5 - GPU General Computing"
 puts "=" * 50
 puts
 
-GPU.init("/home/ubuntu/work/mruby-gpu/shader/add.spv")
+GPU.init("shader")
 puts "Backend: #{GPU.backend}"
 puts "Device:  #{GPU.device_name}"
 puts
