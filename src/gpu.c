@@ -203,6 +203,7 @@ static void dispatch_compute(
 
   vkDestroyFence(g_ctx.device, fence, NULL);
   vkFreeCommandBuffers(g_ctx.device, g_ctx.cmd_pool, 1, &cmd);
+  vkFreeDescriptorSets(g_ctx.device, g_ctx.desc_pool, 1, &desc_set);
 }
 
 /* ---- Init ---- */
@@ -344,6 +345,7 @@ static void gpu_init(const char *shader_dir) {
   };
   VkDescriptorPoolCreateInfo dp_info = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+    .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
     .maxSets = 256,
     .poolSizeCount = 1,
     .pPoolSizes = &pool_size
