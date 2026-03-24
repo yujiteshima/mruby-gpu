@@ -1,0 +1,30 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0) buffer BufA { float A[]; };
+layout(set = 0, binding = 1) buffer BufB { float B[]; };
+layout(set = 0, binding = 2) buffer BufC { float C[]; };
+
+layout(push_constant) uniform PushConstants {
+    uint M;
+    uint K;
+    uint N;
+    uint flags;  // bit0: transpose A, bit1: transpose B
+} pc;
+
+void main() {
+    uint col = gl_GlobalInvocationID.x;
+    uint row = gl_GlobalInvocationID.y;
+    if (row >= pc.M || col >= pc.N) return;
+
+    float sum = 0.0;
+    for (uint k = 0; k < pc.K; k++) {
+        // transpose A: stored as K×M, read as M×K
+        float a = (pc.flags & 1u) != 0u ? A[k * pc.M + row] : A[row * pc.K + k];
+        // transpose B: stored as N×K, read as K×N
+        float b = (pc.flags & 2u) != 0u ? B[col * pc.K + k] : B[k * pc.N + col];
+        sum += a * b;
+    }
+    C[row * pc.N + col] = sum;
+}
