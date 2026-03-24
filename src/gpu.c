@@ -209,6 +209,8 @@ static void dispatch_compute(
 static void gpu_init(const char *shader_dir) {
   if (g_ctx.initialized) return;
 
+  fprintf(stderr, "[gpu_init] start, shader_dir=%s\n", shader_dir);
+
   /* Instance */
   VkApplicationInfo app_info = {
     .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -219,15 +221,18 @@ static void gpu_init(const char *shader_dir) {
     .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
     .pApplicationInfo = &app_info
   };
-  vkCreateInstance(&inst_info, NULL, &g_ctx.instance);
+  VkResult res = vkCreateInstance(&inst_info, NULL, &g_ctx.instance);
+  fprintf(stderr, "[gpu_init] vkCreateInstance: %d\n", res);
 
   /* Physical Device (pick first) */
   uint32_t dev_count = 1;
-  vkEnumeratePhysicalDevices(g_ctx.instance, &dev_count, &g_ctx.physical_device);
+  res = vkEnumeratePhysicalDevices(g_ctx.instance, &dev_count, &g_ctx.physical_device);
+  fprintf(stderr, "[gpu_init] vkEnumeratePhysicalDevices: %d (count=%u)\n", res, dev_count);
 
   /* Queue Family (compute) */
   uint32_t qf_count = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(g_ctx.physical_device, &qf_count, NULL);
+  fprintf(stderr, "[gpu_init] queue families: %u\n", qf_count);
   VkQueueFamilyProperties *qf_props = malloc(sizeof(VkQueueFamilyProperties) * qf_count);
   vkGetPhysicalDeviceQueueFamilyProperties(g_ctx.physical_device, &qf_count, qf_props);
   g_ctx.queue_family = 0;
@@ -238,6 +243,7 @@ static void gpu_init(const char *shader_dir) {
     }
   }
   free(qf_props);
+  fprintf(stderr, "[gpu_init] selected queue family: %u\n", g_ctx.queue_family);
 
   /* Device + Queue */
   float priority = 1.0f;
@@ -252,8 +258,10 @@ static void gpu_init(const char *shader_dir) {
     .queueCreateInfoCount = 1,
     .pQueueCreateInfos = &q_info
   };
-  vkCreateDevice(g_ctx.physical_device, &dev_info, NULL, &g_ctx.device);
+  res = vkCreateDevice(g_ctx.physical_device, &dev_info, NULL, &g_ctx.device);
+  fprintf(stderr, "[gpu_init] vkCreateDevice: %d\n", res);
   vkGetDeviceQueue(g_ctx.device, g_ctx.queue_family, 0, &g_ctx.queue);
+  fprintf(stderr, "[gpu_init] vkGetDeviceQueue done\n");
 
   /* Command Pool */
   VkCommandPoolCreateInfo pool_info = {
@@ -261,7 +269,8 @@ static void gpu_init(const char *shader_dir) {
     .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
     .queueFamilyIndex = g_ctx.queue_family
   };
-  vkCreateCommandPool(g_ctx.device, &pool_info, NULL, &g_ctx.cmd_pool);
+  res = vkCreateCommandPool(g_ctx.device, &pool_info, NULL, &g_ctx.cmd_pool);
+  fprintf(stderr, "[gpu_init] vkCreateCommandPool: %d\n", res);
 
   /* Descriptor Set Layouts */
   int buf_counts[LAYOUT_COUNT] = {3, 2};
@@ -300,10 +309,13 @@ static void gpu_init(const char *shader_dir) {
     vkCreatePipelineLayout(g_ctx.device, &pl_info, NULL, &g_ctx.pipe_layouts[l]);
   }
 
+  fprintf(stderr, "[gpu_init] descriptor set layouts + pipeline layouts done\n");
+
   /* Load shaders and create pipelines */
   for (int p = 0; p < PIPE_COUNT; p++) {
     char spv_path[512];
     snprintf(spv_path, sizeof(spv_path), "%s/%s.spv", shader_dir, pipe_names[p]);
+    fprintf(stderr, "[gpu_init] loading shader [%d]: %s\n", p, spv_path);
 
     size_t spv_size;
     uint8_t *spv_code = load_spv(spv_path, &spv_size);
@@ -312,6 +324,7 @@ static void gpu_init(const char *shader_dir) {
       g_ctx.pipelines[p] = VK_NULL_HANDLE;
       continue;
     }
+    fprintf(stderr, "[gpu_init]   spv loaded, size=%zu\n", spv_size);
 
     VkShaderModuleCreateInfo sm_info = {
       .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -319,7 +332,8 @@ static void gpu_init(const char *shader_dir) {
       .pCode = (uint32_t *)spv_code
     };
     VkShaderModule shader;
-    vkCreateShaderModule(g_ctx.device, &sm_info, NULL, &shader);
+    res = vkCreateShaderModule(g_ctx.device, &sm_info, NULL, &shader);
+    fprintf(stderr, "[gpu_init]   vkCreateShaderModule: %d\n", res);
     free(spv_code);
 
     LayoutId lid = pipe_to_layout[p];
@@ -333,7 +347,8 @@ static void gpu_init(const char *shader_dir) {
       },
       .layout = g_ctx.pipe_layouts[lid]
     };
-    vkCreateComputePipelines(g_ctx.device, VK_NULL_HANDLE, 1, &cp_info, NULL, &g_ctx.pipelines[p]);
+    res = vkCreateComputePipelines(g_ctx.device, VK_NULL_HANDLE, 1, &cp_info, NULL, &g_ctx.pipelines[p]);
+    fprintf(stderr, "[gpu_init]   vkCreateComputePipelines: %d\n", res);
     vkDestroyShaderModule(g_ctx.device, shader, NULL);
   }
 
@@ -348,9 +363,11 @@ static void gpu_init(const char *shader_dir) {
     .poolSizeCount = 1,
     .pPoolSizes = &pool_size
   };
-  vkCreateDescriptorPool(g_ctx.device, &dp_info, NULL, &g_ctx.desc_pool);
+  res = vkCreateDescriptorPool(g_ctx.device, &dp_info, NULL, &g_ctx.desc_pool);
+  fprintf(stderr, "[gpu_init] vkCreateDescriptorPool: %d\n", res);
 
   g_ctx.initialized = 1;
+  fprintf(stderr, "[gpu_init] done\n");
 }
 
 /* ---- mruby: GPU.init(shader_dir) ---- */
