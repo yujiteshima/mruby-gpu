@@ -21,14 +21,22 @@ def xavier(fan_in, fan_out)
   Array.new(fan_out * fan_in) { (rand - 0.5) * 2 * scale }
 end
 
+puts "DEBUG: xavier w1..."
 w1 = GPU.array(xavier(INPUT, HIDDEN))     # 128 x 784
+puts "DEBUG: w1 done"
 b1 = GPU.array(Array.new(HIDDEN, 0.0))    # 128
+puts "DEBUG: b1 done"
 w2 = GPU.array(xavier(HIDDEN, CLASSES))   # 10 x 128
+puts "DEBUG: w2 done"
 b2 = GPU.array(Array.new(CLASSES, 0.0))   # 10
+puts "DEBUG: b2 done"
 
 # --- Load labels ---
+puts "DEBUG: loading labels..."
 labels_buf = GPU.load("data/train_labels.bin")
+puts "DEBUG: labels loaded"
 labels_all = labels_buf.head(N_TRAIN).map { |v| v.to_i }
+puts "DEBUG: labels parsed"
 
 # --- Training Loop ---
 EPOCHS.times do |epoch|
