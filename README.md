@@ -3,6 +3,12 @@
 mruby から Raspberry Pi 5 の GPU（VideoCore VII / Vulkan 1.2）を利用するための mrbgem です。  
 カメラキャプチャ・GPU顔認識・リアルタイムプレビューをたった数十行の mruby スクリプトで実現します。
 
+## ドキュメント
+
+| ファイル | 内容 |
+|---------|------|
+| [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | ボトルネック分析と高速化アイデア |
+
 ---
 
 ## 機能
