@@ -1,0 +1,43 @@
+#version 450
+// YUYV -> RGBA8 conversion.
+// One invocation per macropixel (2 pixels).
+// Output: width * height uints, each = 0xFFBBGGRR (RGBA, A=255)
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// YUYV input: width/2 * height uint values
+layout(binding = 0) readonly  buffer YUYVBuf { uint yuyv[]; };
+// RGBA output: width * height uint values (one uint per pixel)
+layout(binding = 1) writeonly buffer RGBABuf { uint rgba[]; };
+
+layout(push_constant) uniform Params {
+  uint width;
+  uint height;
+};
+
+void main() {
+  uint mpx = gl_GlobalInvocationID.x; // macropixel column (2 real pixels)
+  uint py   = gl_GlobalInvocationID.y;
+  if (mpx >= width / 2u || py >= height) return;
+
+  uint yuyv_idx = py * (width / 2u) + mpx;
+  uint packed   = yuyv[yuyv_idx];
+
+  float y0 = float( packed        & 0xFFu);
+  float u  = float((packed >>  8) & 0xFFu) - 128.0;
+  float y1 = float((packed >> 16) & 0xFFu);
+  float v  = float((packed >> 24) & 0xFFu) - 128.0;
+
+  // BT.601
+  uint r0 = uint(clamp(y0 + 1.402  * v,               0.0, 255.0));
+  uint g0 = uint(clamp(y0 - 0.344  * u - 0.714 * v,   0.0, 255.0));
+  uint b0 = uint(clamp(y0 + 1.772  * u,               0.0, 255.0));
+
+  uint r1 = uint(clamp(y1 + 1.402  * v,               0.0, 255.0));
+  uint g1 = uint(clamp(y1 - 0.344  * u - 0.714 * v,   0.0, 255.0));
+  uint b1 = uint(clamp(y1 + 1.772  * u,               0.0, 255.0));
+
+  uint base = py * width + mpx * 2u;
+  rgba[base]     = 0xFF000000u | (b0 << 16) | (g0 << 8) | r0;
+  rgba[base + 1] = 0xFF000000u | (b1 << 16) | (g1 << 8) | r1;
+}

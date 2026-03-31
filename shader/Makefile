@@ -1,6 +1,6 @@
 GLSLC ?= glslangValidator
 
-SHADERS = add.comp mul.comp sub.comp relu.comp scale.comp matmul.comp
+SHADERS = add.comp mul.comp sub.comp relu.comp scale.comp matmul.comp rgb_convert.comp draw_rect.comp
 SPIRV = $(SHADERS:.comp=.spv)
 
 all: $(SPIRV)

@@ -620,6 +620,14 @@ static mrb_value mrb_gpu_device_name(mrb_state *mrb, mrb_value self) {
   return mrb_str_new_cstr(mrb, props.deviceName);
 }
 
+/* ---- forward declarations for sub-gem inits ---- */
+void mrb_camera_gem_init(mrb_state *mrb);
+void mrb_camera_gem_final(mrb_state *mrb);
+void mrb_face_gem_init(mrb_state *mrb);
+void mrb_face_gem_final(mrb_state *mrb);
+void mrb_display_gem_init(mrb_state *mrb);
+void mrb_display_gem_final(mrb_state *mrb);
+
 /* ---- gem init ---- */
 void mrb_mruby_gpu_gem_init(mrb_state *mrb) {
   struct RClass *gpu = mrb_define_module(mrb, "GPU");
@@ -643,9 +651,16 @@ void mrb_mruby_gpu_gem_init(mrb_state *mrb) {
   mrb_define_method(mrb, buf_class, "head", mrb_gpu_buffer_head, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, buf_class, "size", mrb_gpu_buffer_size, MRB_ARGS_NONE());
   mrb_define_method(mrb, buf_class, "save", mrb_gpu_buffer_save, MRB_ARGS_REQ(1));
+
+  mrb_camera_gem_init(mrb);
+  mrb_face_gem_init(mrb);
+  mrb_display_gem_init(mrb);
 }
 
 void mrb_mruby_gpu_gem_final(mrb_state *mrb) {
+  mrb_display_gem_final(mrb);
+  mrb_face_gem_final(mrb);
+  mrb_camera_gem_final(mrb);
   if (g_ctx.initialized) {
     vkDestroyDescriptorPool(g_ctx.device, g_ctx.desc_pool, NULL);
     for (int p = 0; p < PIPE_COUNT; p++) {

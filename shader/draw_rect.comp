@@ -1,0 +1,39 @@
+#version 450
+// Draw a filled-border rectangle onto an RGBA8 image (one uint per pixel).
+// One invocation per pixel of the image.
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(binding = 0) buffer RGBABuf { uint rgba[]; };  // read-write
+
+layout(push_constant) uniform Params {
+  uint img_w;
+  uint img_h;
+  int  rect_x;
+  int  rect_y;
+  uint rect_w;
+  uint rect_h;
+  uint color;      // 0xFFBBGGRR
+  uint thickness;  // border thickness in pixels
+};
+
+void main() {
+  uint px = gl_GlobalInvocationID.x;
+  uint py = gl_GlobalInvocationID.y;
+  if (px >= img_w || py >= img_h) return;
+
+  // Is this pixel on the border of the rectangle?
+  int ix = int(px), iy = int(py);
+  bool in_x = (ix >= rect_x && ix < rect_x + int(rect_w));
+  bool in_y = (iy >= rect_y && iy < rect_y + int(rect_h));
+  if (!in_x || !in_y) return;
+
+  bool near_left   = (ix - rect_x)                  < int(thickness);
+  bool near_right  = (rect_x + int(rect_w) - 1 - ix) < int(thickness);
+  bool near_top    = (iy - rect_y)                  < int(thickness);
+  bool near_bottom = (rect_y + int(rect_h) - 1 - iy) < int(thickness);
+
+  if (near_left || near_right || near_top || near_bottom) {
+    rgba[py * img_w + px] = color;
+  }
+}
