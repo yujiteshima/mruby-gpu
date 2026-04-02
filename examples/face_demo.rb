@@ -5,10 +5,15 @@ puts "=" * 52
 puts
 
 # ---- モード選択 -----------------------------------------------
-# 引数 fast  : 全体1回のみ  ~6 FPS, ~3m まで検出
-# 引数 count : 全体+5タイル ~1 FPS, ~7m まで検出（デフォルト）
-# 実行例: mruby face_demo.rb fast
-MODE = (ARGV[0] || "count").to_sym
+# 引数1: fast | count (デフォルト: count)
+# 引数2: gpu  | cpu   (デフォルト: cpu)
+#
+# 実行例:
+#   mruby face_demo.rb fast cpu   # 近距離・高速 (~30 FPS)
+#   mruby face_demo.rb count cpu  # 会場カウント (~20 FPS)
+#   mruby face_demo.rb fast gpu   # GPU推論 (~6 FPS)
+MODE    = (ARGV[0] || "count").to_sym
+USE_GPU = (ARGV[1] || "cpu") == "gpu"
 
 THRESHOLD = case MODE
             when :fast  then 0.6
@@ -20,15 +25,15 @@ GPU.init("shader")
 puts "GPU    : #{GPU.device_name}"
 
 cam      = Camera.open("/dev/video0", 640, 480)
-detector = FaceDetector.new("models/ultraface-slim", use_gpu: true)
+detector = FaceDetector.new("models/ultraface-slim", use_gpu: USE_GPU)
 disp     = Display.open(cam.width, cam.height, "mruby face demo  —  ESC to quit")
 
 W = cam.width   # 640
 H = cam.height  # 480
 
 puts "Camera : #{W}x#{H} @ 30fps"
-puts "Model  : UltraFace-slim (NCNN + Vulkan GPU)"
-puts "Mode   : #{MODE}  (引数 fast|count で切替)"
+puts "Model  : UltraFace-slim (NCNN #{USE_GPU ? "Vulkan GPU" : "CPU NEON"})"
+puts "Mode   : #{MODE}  |  Backend: #{USE_GPU ? "GPU" : "CPU"}"
 puts "ESC またはウィンドウを閉じると終了します。"
 puts
 

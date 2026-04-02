@@ -99,28 +99,71 @@ rake MRUBY_CONFIG=gpu
 
 ---
 
-## 顔認識デモの実行
+## LT デモ用コマンド
+
+以下を順番に実行すると LT のストーリーに沿ったデモになります。
 
 ```bash
 cd /home/ubuntu/work/mruby-gpu
 MRUBY=/home/ubuntu/work/mruby/build/host/bin/mruby
-
-# fast モード: ~6 FPS、約3m以内の顔を検出（デモ・近距離向け）
-DISPLAY=:0 $MRUBY examples/face_demo.rb fast
-
-# count モード: ~1 FPS、約7m以内の顔を検出（会場の人数カウント向け）
-DISPLAY=:0 $MRUBY examples/face_demo.rb count
-
-# モード省略時は count モード
-DISPLAY=:0 $MRUBY examples/face_demo.rb
 ```
 
-### モードの違い
+### Step 1: GPU で一発計算（mruby から GPU を叩けることを見せる）
 
-| モード | 処理方式 | 速度 | 検出距離 | 用途 |
-|--------|----------|------|---------|------|
-| `fast` | 全体画像1回のみ | **6.1 FPS** | ~3m | デモ・プレゼン |
-| `count` | 全体+5タイル分割 | **1.0 FPS** | **~7m** | LT会場の人数カウント |
+```bash
+$MRUBY -e 'GPU.init("shader"); a = GPU.array([1.0, 2.0, 3.0]); b = GPU.array([10.0, 20.0, 30.0]); puts GPU.add(a, b).head(3).inspect'
+```
+
+```
+[11.0, 22.0, 33.0]
+```
+
+### Step 2: 100 万要素の GPU ベクトル加算（GPU の並列計算力を見せる）
+
+```bash
+$MRUBY examples/demo.rb
+```
+
+```
+1,000,000 elements x 5 runs  Avg: 5.06 ms
+```
+
+### Step 3: カメラ + 顔認識 — GPU モード（GPU 推論を見せる）
+
+```bash
+DISPLAY=:0 $MRUBY examples/face_demo.rb fast gpu
+```
+
+> `/dev/dri` の権限エラーが出る場合（`video` / `render` グループ未反映時）:
+> ```bash
+> sg video -c "sg render -c 'DISPLAY=:0 /home/ubuntu/work/mruby/build/host/bin/mruby examples/face_demo.rb fast gpu'"
+> ```
+
+→ ~6 FPS で動く。「GPU で顔認識が動いた！」
+
+### Step 4: カメラ + 顔認識 — CPU モード（適材適所を見せる）
+
+```bash
+DISPLAY=:0 $MRUBY examples/face_demo.rb fast cpu
+```
+
+> 権限エラーが出る場合:
+> ```bash
+> sg video -c "sg render -c 'DISPLAY=:0 /home/ubuntu/work/mruby/build/host/bin/mruby examples/face_demo.rb fast cpu'"
+> ```
+
+→ **~30 FPS で動く。** 「小さなモデルは CPU NEON が得意。使い分けられるのが mruby-gpu の強み。」
+
+> ESC キーまたはウィンドウの × ボタンで停止します。
+
+### モード一覧
+
+| 引数1 | 引数2 | 速度 | 検出距離 | 用途 |
+|--------|------|------|---------|------|
+| `fast` | `cpu` | **30 FPS** | ~3m | デモ・プレゼン |
+| `fast` | `gpu` | 6 FPS | ~3m | GPU 推論デモ |
+| `count` | `cpu` | **20 FPS** | ~7m | 会場の人数カウント |
+| `count` | `gpu` | 1 FPS | ~7m | GPU + タイル処理 |
 
 **タイル処理の仕組み**（count モード）:  
 640×480 の画像を 320×240 の5タイルに分割して各タイルを個別に推論することで、  
