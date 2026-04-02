@@ -2,12 +2,10 @@
  * mrb_face.cpp — mruby FaceDetector class backed by NCNN + Vulkan
  *
  * FaceDetector.new(model_path, use_gpu: true) -> FaceDetector
- * detector.detect(yuyv_str, width, height, threshold: 0.7) -> Array of Struct
- *   Each element responds to: .x .y .w .h .score (all Float/Integer)
+ * detector.detect_rgb(rgb_str, width, height, threshold: 0.7) -> Array of Hash
+ *   Each Hash has keys: :x, :y, :w, :h, :score (all Float)
  *
- * The YUYV frame string comes directly from Camera#capture.
- * CPU-side YUYV→RGB conversion is done here before NCNN inference.
- * (GPU path via Compute Shader is wired in face_demo.rb.)
+ * Input is RGB888. Use Camera.yuyv_to_rgb for YUYV→RGB conversion.
  */
 
 extern "C" {
@@ -41,30 +39,6 @@ struct FaceDetector {
   int input_w;   /* model input width  (320 for UltraFace-slim) */
   int input_h;   /* model input height (240 for UltraFace-slim) */
 };
-
-/* ---- YUYV → RGB (CPU fallback, ~640x480 ≈ 1ms on Pi5) ---- */
-static void yuyv_to_rgb(const uint8_t *yuyv, uint8_t *rgb,
-                         int width, int height) {
-  int npix = width * height;
-  for (int i = 0; i < npix / 2; i++) {
-    int y0 = yuyv[i * 4 + 0];
-    int u  = yuyv[i * 4 + 1] - 128;
-    int y1 = yuyv[i * 4 + 2];
-    int v  = yuyv[i * 4 + 3] - 128;
-
-    auto clamp = [](int x) -> uint8_t {
-      return (uint8_t)(x < 0 ? 0 : x > 255 ? 255 : x);
-    };
-
-    rgb[(i * 2)     * 3 + 0] = clamp(y0 + (int)(1.402f * v));
-    rgb[(i * 2)     * 3 + 1] = clamp(y0 - (int)(0.344f * u) - (int)(0.714f * v));
-    rgb[(i * 2)     * 3 + 2] = clamp(y0 + (int)(1.772f * u));
-
-    rgb[(i * 2 + 1) * 3 + 0] = clamp(y1 + (int)(1.402f * v));
-    rgb[(i * 2 + 1) * 3 + 1] = clamp(y1 - (int)(0.344f * u) - (int)(0.714f * v));
-    rgb[(i * 2 + 1) * 3 + 2] = clamp(y1 + (int)(1.772f * u));
-  }
-}
 
 /* ---- Simple NMS ---- */
 static float iou(const FaceBox &a, const FaceBox &b) {
@@ -235,38 +209,8 @@ static mrb_value mrb_face_detector_new(mrb_state *mrb, mrb_value klass) {
   return mrb_obj_value(data);
 }
 
-/*
- * detector.detect(yuyv_string, width, height [, threshold: 0.7])
- * Returns Array of Hash: [{x:, y:, w:, h:, score:}, ...]
- */
-static mrb_value mrb_face_detector_detect(mrb_state *mrb, mrb_value self) {
-  FaceDetector *det = DATA_GET_PTR(mrb, self, &face_detector_type, FaceDetector);
-
-  mrb_value frame;
-  mrb_int src_w, src_h;
-  mrb_value opts = mrb_nil_value();
-  mrb_get_args(mrb, "Sii|H", &frame, &src_w, &src_h, &opts);
-
-  float threshold = 0.7f;
-  if (!mrb_nil_p(opts)) {
-    mrb_value tv = mrb_hash_get(mrb, opts,
-                     mrb_symbol_value(mrb_intern_cstr(mrb, "threshold")));
-    if (!mrb_nil_p(tv)) threshold = (float)mrb_float(tv);
-  }
-
-  const uint8_t *yuyv = (const uint8_t *)RSTRING_PTR(frame);
-  size_t expected = (size_t)(src_w * src_h * 2);
-  if ((size_t)RSTRING_LEN(frame) < expected) {
-    mrb_raise(mrb, E_ARGUMENT_ERROR, "Frame string too short for given width/height");
-  }
-
-  /* YUYV → RGB */
-  std::vector<uint8_t> rgb((size_t)(src_w * src_h * 3));
-  yuyv_to_rgb(yuyv, rgb.data(), (int)src_w, (int)src_h);
-
-  std::vector<FaceBox> boxes = detect(det, rgb.data(), (int)src_w, (int)src_h, threshold);
-
-  /* Build mruby Array of Hash */
+/* ---- Convert FaceBox vector to mruby Array of Hash ---- */
+static mrb_value boxes_to_mrb_ary(mrb_state *mrb, const std::vector<FaceBox> &boxes) {
   mrb_value result = mrb_ary_new_capa(mrb, (mrb_int)boxes.size());
   mrb_sym sym_x     = mrb_intern_cstr(mrb, "x");
   mrb_sym sym_y     = mrb_intern_cstr(mrb, "y");
@@ -283,14 +227,13 @@ static mrb_value mrb_face_detector_detect(mrb_state *mrb, mrb_value self) {
     mrb_hash_set(mrb, h, mrb_symbol_value(sym_score), mrb_float_value(mrb, b.score));
     mrb_ary_push(mrb, result, h);
   }
-
   return result;
 }
 
 /*
  * detector.detect_rgb(rgb_string, width, height [, threshold: 0.7])
- * YUYV 変換済みの RGB888 文字列を受け取って検出する。
- * タイル処理など、外側で変換済みの場合に使う。
+ * RGB888 文字列を受け取って顔検出する。
+ * YUYV→RGB変換は Camera.yuyv_to_rgb で事前に行うこと。
  */
 static mrb_value mrb_face_detector_detect_rgb(mrb_state *mrb, mrb_value self) {
   FaceDetector *det = DATA_GET_PTR(mrb, self, &face_detector_type, FaceDetector);
@@ -313,24 +256,7 @@ static mrb_value mrb_face_detector_detect_rgb(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "RGB string too short for given width/height");
 
   std::vector<FaceBox> boxes = detect(det, rgb, (int)src_w, (int)src_h, threshold);
-
-  mrb_value result = mrb_ary_new_capa(mrb, (mrb_int)boxes.size());
-  mrb_sym sym_x     = mrb_intern_cstr(mrb, "x");
-  mrb_sym sym_y     = mrb_intern_cstr(mrb, "y");
-  mrb_sym sym_w     = mrb_intern_cstr(mrb, "w");
-  mrb_sym sym_h     = mrb_intern_cstr(mrb, "h");
-  mrb_sym sym_score = mrb_intern_cstr(mrb, "score");
-
-  for (const auto &b : boxes) {
-    mrb_value h = mrb_hash_new(mrb);
-    mrb_hash_set(mrb, h, mrb_symbol_value(sym_x),     mrb_float_value(mrb, b.x));
-    mrb_hash_set(mrb, h, mrb_symbol_value(sym_y),     mrb_float_value(mrb, b.y));
-    mrb_hash_set(mrb, h, mrb_symbol_value(sym_w),     mrb_float_value(mrb, b.w));
-    mrb_hash_set(mrb, h, mrb_symbol_value(sym_h),     mrb_float_value(mrb, b.h));
-    mrb_hash_set(mrb, h, mrb_symbol_value(sym_score), mrb_float_value(mrb, b.score));
-    mrb_ary_push(mrb, result, h);
-  }
-  return result;
+  return boxes_to_mrb_ary(mrb, boxes);
 }
 
 extern "C" void mrb_face_gem_init(mrb_state *mrb) {
@@ -338,7 +264,6 @@ extern "C" void mrb_face_gem_init(mrb_state *mrb) {
   MRB_SET_INSTANCE_TT(cls, MRB_TT_CDATA);
 
   mrb_define_class_method(mrb, cls, "new",        mrb_face_detector_new,        MRB_ARGS_REQ(1) | MRB_ARGS_OPT(1));
-  mrb_define_method(mrb, cls, "detect",     mrb_face_detector_detect,     MRB_ARGS_REQ(3) | MRB_ARGS_OPT(1));
   mrb_define_method(mrb, cls, "detect_rgb", mrb_face_detector_detect_rgb, MRB_ARGS_REQ(3) | MRB_ARGS_OPT(1));
 }
 

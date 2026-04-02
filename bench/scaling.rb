@@ -1,4 +1,4 @@
-GPU.init("/home/ubuntu/work/mruby-gpu/shader/add.spv")
+GPU.init("shader")
 puts "=== mruby + Vulkan Compute on #{GPU.device_name} ==="
 
 [1_000, 10_000, 100_000, 1_000_000].each do |n|

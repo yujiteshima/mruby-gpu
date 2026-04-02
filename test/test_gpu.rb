@@ -1,4 +1,4 @@
-GPU.init("/home/ubuntu/work/mruby-gpu/shader/add.spv")
+GPU.init("shader")
 
 puts "Backend: #{GPU.backend}"
 puts "Device:  #{GPU.device_name}"

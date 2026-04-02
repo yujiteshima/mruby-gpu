@@ -106,13 +106,13 @@ cd /home/ubuntu/work/mruby-gpu
 MRUBY=/home/ubuntu/work/mruby/build/host/bin/mruby
 
 # fast モード: ~6 FPS、約3m以内の顔を検出（デモ・近距離向け）
-DISPLAY=:0 $MRUBY face_demo.rb fast
+DISPLAY=:0 $MRUBY examples/face_demo.rb fast
 
 # count モード: ~1 FPS、約7m以内の顔を検出（会場の人数カウント向け）
-DISPLAY=:0 $MRUBY face_demo.rb count
+DISPLAY=:0 $MRUBY examples/face_demo.rb count
 
 # モード省略時は count モード
-DISPLAY=:0 $MRUBY face_demo.rb
+DISPLAY=:0 $MRUBY examples/face_demo.rb
 ```
 
 ### モードの違い
@@ -216,7 +216,7 @@ cam.close
 ```ruby
 detector = FaceDetector.new("models/ultraface-slim", use_gpu: true)
 
-faces = detector.detect(yuyv, width, height, threshold: 0.6)
+faces = detector.detect_rgb(rgb, width, height, threshold: 0.6)
 # faces => Array of Hash
 # 各要素: { x: Float, y: Float, w: Float, h: Float, score: Float }
 
@@ -259,26 +259,40 @@ disp.close
 
 ```
 mruby-gpu/
-├── src/
-│   ├── gpu.c               # GPU クラス (Vulkan Compute)
-│   ├── mrb_camera.c        # Camera クラス (V4L2)
-│   ├── mrb_face.cpp        # FaceDetector クラス (NCNN + Vulkan)
-│   ├── mrb_display.c       # Display クラス (SDL2)
-│   ├── v4l2_capture.c      # V4L2 カメラ低レベル実装
+├── src/                        # C/C++ ソース
+│   ├── gpu_internal.h          # GPU 内部共有ヘッダ
+│   ├── gpu_vulkan.c            # Vulkan 初期化・コンピュートディスパッチ
+│   ├── gpu_buffer.c            # GpuBuffer 作成・アクセス・I/O
+│   ├── gpu_ops.c               # mruby メソッド定義・gem init/final
+│   ├── mrb_camera.c            # Camera クラス (V4L2)
+│   ├── mrb_face.cpp            # FaceDetector クラス (NCNN + Vulkan)
+│   ├── mrb_display.c           # Display クラス (SDL2)
+│   ├── v4l2_capture.c          # V4L2 カメラ低レベル実装
 │   └── v4l2_capture.h
-├── shader/
-│   ├── add.comp / .spv     # ベクトル加算
-│   ├── matmul.comp / .spv  # 行列積
-│   ├── rgb_convert.comp    # YUYV→RGBA GPU 変換
-│   ├── draw_rect.comp      # 枠描画 GPU シェーダー
+├── shader/                     # Compute Shader
+│   ├── add.comp / .spv         # ベクトル加算
+│   ├── matmul.comp / .spv      # 行列積
+│   ├── rgb_convert.comp        # YUYV→RGBA GPU 変換
+│   ├── draw_rect.comp          # 枠描画 GPU シェーダー
 │   └── Makefile
-├── models/
+├── models/                     # NCNN モデル
 │   ├── ultraface-slim.param
 │   └── ultraface-slim.bin
-├── face_demo.rb            # 顔認識デモ（メイン）
-├── demo.rb                 # GPU ベクトル演算デモ
-├── mrbgem.rake             # gem ビルド設定
-└── README.md               # このファイル
+├── examples/                   # デモ・サンプルスクリプト
+│   ├── demo.rb                 # GPU 基本演算デモ
+│   ├── face_demo.rb            # 顔認識デモ (LT 本番用)
+│   ├── mnist.rb                # MNIST 推論
+│   └── train.rb                # MNIST 学習
+├── bench/                      # ベンチマーク
+│   ├── basic.rb                # 基本ベンチマーク
+│   └── scaling.rb              # スケーリングベンチマーク
+├── test/                       # テスト
+│   └── test_gpu.rb             # GPU 基本テスト
+├── tools/                      # データ準備・スタンドアロンテスト
+├── docs/                       # ドキュメント
+│   └── PERFORMANCE.md
+├── mrbgem.rake                 # gem ビルド設定
+└── README.md                   # このファイル
 ```
 
 ---
@@ -289,7 +303,7 @@ mruby-gpu/
 環境変数 `DISPLAY` が設定されていません。
 
 ```bash
-DISPLAY=:0 mruby face_demo.rb
+DISPLAY=:0 mruby examples/face_demo.rb
 ```
 
 **カメラが開けない (`Camera.open failed`)**  
@@ -297,7 +311,7 @@ DISPLAY=:0 mruby face_demo.rb
 
 ```bash
 v4l2-ctl --list-devices   # 接続中のカメラ一覧
-# /dev/video0 以外の場合は face_demo.rb の Camera.open 行を修正
+# /dev/video0 以外の場合は examples/face_demo.rb の Camera.open 行を修正
 ```
 
 **顔が検出されない**  

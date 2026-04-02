@@ -21,22 +21,14 @@ def xavier(fan_in, fan_out)
   Array.new(fan_out * fan_in) { (rand - 0.5) * 2 * scale }
 end
 
-puts "DEBUG: xavier w1..."
 w1 = GPU.array(xavier(INPUT, HIDDEN))     # 128 x 784
-puts "DEBUG: w1 done"
 b1 = GPU.array(Array.new(HIDDEN, 0.0))    # 128
-puts "DEBUG: b1 done"
 w2 = GPU.array(xavier(HIDDEN, CLASSES))   # 10 x 128
-puts "DEBUG: w2 done"
 b2 = GPU.array(Array.new(CLASSES, 0.0))   # 10
-puts "DEBUG: b2 done"
 
 # --- Load labels ---
-puts "DEBUG: loading labels..."
 labels_buf = GPU.load("data/train_labels.bin")
-puts "DEBUG: labels loaded"
 labels_all = labels_buf.head(N_TRAIN).map { |v| v.to_i }
-puts "DEBUG: labels parsed"
 
 # --- Training Loop ---
 EPOCHS.times do |epoch|
@@ -44,35 +36,17 @@ EPOCHS.times do |epoch|
   loss_sum = 0.0
 
   N_TRAIN.times do |i|
-    if i == 0
-      puts "DEBUG: loading image 0..."
-    end
     # Load one image (784 floats) from concatenated file
     x = GPU.load("data/train_images.bin", i * INPUT, INPUT)
-    if i == 0
-      puts "DEBUG: image loaded, matmul w1*x..."
-    end
 
     # === Forward ===
     # Layer 1: h = ReLU(W1 @ x + b1)
     z1 = GPU.matmul(w1, x, HIDDEN, INPUT, 1)
-    if i == 0
-      puts "DEBUG: matmul done, add b1..."
-    end
     h_pre = GPU.add(z1, b1)
-    if i == 0
-      puts "DEBUG: add done, relu..."
-    end
     h = GPU.relu(h_pre)
 
-    if i == 0
-      puts "DEBUG: relu done, layer2..."
-    end
     # Layer 2: o = W2 @ h + b2
     o = GPU.add(GPU.matmul(w2, h, CLASSES, HIDDEN, 1), b2)
-    if i == 0
-      puts "DEBUG: layer2 done, softmax..."
-    end
 
     # Softmax (Ruby side - only 10 elements)
     scores = o.head(CLASSES)
@@ -88,9 +62,6 @@ EPOCHS.times do |epoch|
     # Cross-entropy loss
     loss_sum += -Math.log(probs[label] + 1e-8)
 
-    if i == 0
-      puts "DEBUG: softmax done, backward..."
-    end
     # === Backward ===
     # dL/do = probs - one_hot(label)
     grad_o_data = probs.dup
@@ -118,43 +89,15 @@ EPOCHS.times do |epoch|
     # dL/db1 = grad_h_pre
     grad_b1 = grad_h_pre
 
-    if i == 0
-      puts "DEBUG: backward done, SGD update..."
-      puts "DEBUG: scale grad_w1..."
-    end
     # === SGD Update ===
     sw1 = GPU.scale(grad_w1, LR)
-    if i == 0
-      puts "DEBUG: scale grad_w1 done, sub w1..."
-    end
     w1 = GPU.sub(w1, sw1)
-    if i == 0
-      puts "DEBUG: w1 updated, scale grad_b1..."
-    end
     sb1 = GPU.scale(grad_b1, LR)
-    if i == 0
-      puts "DEBUG: scale grad_b1 done, sub b1..."
-    end
     b1 = GPU.sub(b1, sb1)
-    if i == 0
-      puts "DEBUG: b1 updated, scale grad_w2..."
-    end
     sw2 = GPU.scale(grad_w2, LR)
-    if i == 0
-      puts "DEBUG: scale grad_w2 done, sub w2..."
-    end
     w2 = GPU.sub(w2, sw2)
-    if i == 0
-      puts "DEBUG: w2 updated, scale grad_b2..."
-    end
     sb2 = GPU.scale(grad_b2, LR)
-    if i == 0
-      puts "DEBUG: scale grad_b2 done, sub b2..."
-    end
     b2 = GPU.sub(b2, sb2)
-    if i == 0
-      puts "DEBUG: SGD update done"
-    end
 
     # Progress
     if (i + 1) % 10000 == 0
