@@ -224,6 +224,36 @@ static mrb_value mrb_gpu_device_name(mrb_state *mrb, mrb_value self) {
   return mrb_str_new_cstr(mrb, props.deviceName);
 }
 
+/* ---- mruby: GPU.transpose(buf, rows, cols) -> GPU::Buffer ---- */
+/* rows x cols (row-major) を cols x rows (row-major) に転置 */
+static mrb_value mrb_gpu_transpose(mrb_state *mrb, mrb_value self) {
+  mrb_value va;
+  mrb_int rows, cols;
+  mrb_get_args(mrb, "oii", &va, &rows, &cols);
+
+  GpuBuffer *a = DATA_GET_PTR(mrb, va, &gpu_buffer_type, GpuBuffer);
+  if (a->n != (uint32_t)(rows * cols)) {
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "Buffer size != rows * cols");
+  }
+
+  GpuBuffer *b = create_buffer(mrb, a->n);
+
+  float *src, *dst;
+  vkMapMemory(g_ctx.device, a->memory, 0, a->bytes, 0, (void **)&src);
+  vkMapMemory(g_ctx.device, b->memory, 0, b->bytes, 0, (void **)&dst);
+
+  for (mrb_int r = 0; r < rows; r++) {
+    for (mrb_int c = 0; c < cols; c++) {
+      dst[c * rows + r] = src[r * cols + c];
+    }
+  }
+
+  vkUnmapMemory(g_ctx.device, a->memory);
+  vkUnmapMemory(g_ctx.device, b->memory);
+
+  return wrap_buffer(mrb, b);
+}
+
 /* ---- forward declarations for sub-gem inits ---- */
 void mrb_camera_gem_init(mrb_state *mrb);
 void mrb_camera_gem_final(mrb_state *mrb);
@@ -249,6 +279,7 @@ void mrb_mruby_gpu_gem_init(mrb_state *mrb) {
   mrb_define_module_function(mrb, gpu, "matmul_nt", mrb_gpu_matmul_nt, MRB_ARGS_REQ(5));
   mrb_define_module_function(mrb, gpu, "backend", mrb_gpu_backend, MRB_ARGS_NONE());
   mrb_define_module_function(mrb, gpu, "device_name", mrb_gpu_device_name, MRB_ARGS_NONE());
+  mrb_define_module_function(mrb, gpu, "transpose", mrb_gpu_transpose, MRB_ARGS_REQ(3));
 
   struct RClass *buf_class = mrb_define_class_under(mrb, gpu, "Buffer", mrb->object_class);
   MRB_SET_INSTANCE_TT(buf_class, MRB_TT_CDATA);

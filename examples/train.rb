@@ -4,6 +4,7 @@
 
 GPU.init("shader")
 puts "=== MNIST Training on #{GPU.device_name} ==="
+TRAIN_START = Time.now
 
 # --- Hyperparameters ---
 HIDDEN  = 128
@@ -109,7 +110,8 @@ EPOCHS.times do |epoch|
 
   acc = (correct.to_f / N_TRAIN * 100).round(1)
   avg_loss = (loss_sum / N_TRAIN).round(4)
-  puts "Epoch #{epoch + 1}/#{EPOCHS}: loss=#{avg_loss} accuracy=#{acc}%"
+  elapsed = ((Time.now - TRAIN_START) / 60.0).round(1)
+  puts "Epoch #{epoch + 1}/#{EPOCHS}: loss=#{avg_loss} accuracy=#{acc}%  (#{elapsed} min)"
 end
 
 # --- Save weights ---
@@ -118,4 +120,5 @@ w1.save("weights/fc1_weight.bin")
 b1.save("weights/fc1_bias.bin")
 w2.save("weights/fc2_weight.bin")
 b2.save("weights/fc2_bias.bin")
-puts "Done."
+total_min = ((Time.now - TRAIN_START) / 60.0).round(1)
+puts "Done. Total training time: #{total_min} min"
