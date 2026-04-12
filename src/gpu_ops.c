@@ -352,6 +352,8 @@ void mrb_face_gem_init(mrb_state *mrb);
 void mrb_face_gem_final(mrb_state *mrb);
 void mrb_display_gem_init(mrb_state *mrb);
 void mrb_display_gem_final(mrb_state *mrb);
+void mrb_skin_gem_init(mrb_state *mrb);
+void mrb_skin_gem_final(mrb_state *mrb);
 
 /* ---- gem init ---- */
 void mrb_mruby_gpu_gem_init(mrb_state *mrb) {
@@ -382,9 +384,11 @@ void mrb_mruby_gpu_gem_init(mrb_state *mrb) {
   mrb_camera_gem_init(mrb);
   mrb_face_gem_init(mrb);
   mrb_display_gem_init(mrb);
+  mrb_skin_gem_init(mrb);
 }
 
 void mrb_mruby_gpu_gem_final(mrb_state *mrb) {
+  mrb_skin_gem_final(mrb);
   mrb_display_gem_final(mrb);
   mrb_face_gem_final(mrb);
   mrb_camera_gem_final(mrb);
