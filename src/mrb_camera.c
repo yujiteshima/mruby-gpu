@@ -141,6 +141,38 @@ static mrb_value mrb_camera_crop_rgb(mrb_state *mrb, mrb_value klass) {
   return out;
 }
 
+/* ---- Camera.load_rgb(path) -> String (raw RGB bytes) ---- */
+static mrb_value mrb_camera_load_rgb(mrb_state *mrb, mrb_value klass) {
+  const char *path;
+  mrb_get_args(mrb, "z", &path);
+  FILE *fp = fopen(path, "rb");
+  if (!fp) mrb_raisef(mrb, E_RUNTIME_ERROR, "Cannot open: %s", path);
+  fseek(fp, 0, SEEK_END);
+  long len = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
+  mrb_value out = mrb_str_buf_new(mrb, (mrb_int)len);
+  fread(RSTRING_PTR(out), 1, (size_t)len, fp);
+  RSTR_SET_LEN(mrb_str_ptr(out), (mrb_int)len);
+  fclose(fp);
+  return out;
+}
+
+/* ---- Camera.read_frame(path, w, h, frame_no) -> String (1 frame RGB) ---- */
+static mrb_value mrb_camera_read_frame(mrb_state *mrb, mrb_value klass) {
+  const char *path;
+  mrb_int w, h, frame_no;
+  mrb_get_args(mrb, "ziii", &path, &w, &h, &frame_no);
+  FILE *fp = fopen(path, "rb");
+  if (!fp) mrb_raisef(mrb, E_RUNTIME_ERROR, "Cannot open: %s", path);
+  long frame_bytes = (long)(w * h * 3);
+  fseek(fp, frame_bytes * frame_no, SEEK_SET);
+  mrb_value out = mrb_str_buf_new(mrb, (mrb_int)frame_bytes);
+  size_t rd = fread(RSTRING_PTR(out), 1, (size_t)frame_bytes, fp);
+  RSTR_SET_LEN(mrb_str_ptr(out), (mrb_int)rd);
+  fclose(fp);
+  return out;
+}
+
 /* ---- cam.width / cam.height ---- */
 static mrb_value mrb_camera_width(mrb_state *mrb, mrb_value self) {
   v4l2_camera_t *cam = DATA_GET_PTR(mrb, self, &camera_type, v4l2_camera_t);
@@ -167,6 +199,8 @@ void mrb_camera_gem_init(mrb_state *mrb) {
   mrb_define_class_method(mrb, cls, "open",         mrb_camera_open,         MRB_ARGS_REQ(3));
   mrb_define_class_method(mrb, cls, "yuyv_to_rgb",  mrb_camera_yuyv_to_rgb,  MRB_ARGS_REQ(3));
   mrb_define_class_method(mrb, cls, "crop_rgb",     mrb_camera_crop_rgb,     MRB_ARGS_REQ(7));
+  mrb_define_class_method(mrb, cls, "load_rgb",     mrb_camera_load_rgb,     MRB_ARGS_REQ(1));
+  mrb_define_class_method(mrb, cls, "read_frame",   mrb_camera_read_frame,   MRB_ARGS_REQ(4));
   mrb_define_method(mrb, cls, "capture",      mrb_camera_capture,      MRB_ARGS_NONE());
   mrb_define_method(mrb, cls, "capture_rgb",  mrb_camera_capture_rgb,  MRB_ARGS_NONE());
   mrb_define_method(mrb, cls, "width",        mrb_camera_width,        MRB_ARGS_NONE());
