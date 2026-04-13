@@ -1,5 +1,7 @@
 /* gpu_ops.c -- mruby method definitions for GPU module operations + gem init/final */
 #include "gpu_internal.h"
+#include <mruby/hash.h>
+#include <mruby/array.h>
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
