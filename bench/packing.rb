@@ -29,7 +29,8 @@ def tile_bias(bias_gpu, size, batch)
 end
 
 # --- Synthetic inputs (MNIST 代替) ---
-images = Array.new(SAMPLES * INPUT) { rand }
+# Array size limit 回避: SAMPLES * INPUT は大きすぎるので nested で保持
+images = Array.new(SAMPLES) { Array.new(INPUT) { rand } }  # [[784 floats] × SAMPLES]
 labels = Array.new(SAMPLES) { rand(CLASSES) }
 
 # =====================================================================
@@ -43,7 +44,7 @@ b2 = GPU.array(Array.new(CLASSES, 0.0))
 print "[Before] running #{SAMPLES} samples (batch=1)... "
 t0 = Time.now
 SAMPLES.times do |i|
-  x = GPU.array(images[i * INPUT, INPUT])                 # CPU -> GPU
+  x = GPU.array(images[i])                               # CPU -> GPU
 
   # Forward
   z1 = GPU.matmul(w1, x, HIDDEN, INPUT, 1)
@@ -93,7 +94,10 @@ print "[After]  running #{samples_done} samples (batch=#{BATCH})... "
 t0 = Time.now
 n_iters.times do |iter|
   base = iter * BATCH
-  raw = GPU.array(images[base * INPUT, INPUT * BATCH])    # CPU -> GPU (packed)
+  # BATCH 個のサンプルを flatten して一括アップロード (最大 INPUT*BATCH 要素)
+  batch_flat = []
+  BATCH.times { |b| batch_flat.concat(images[base + b]) }
+  raw = GPU.array(batch_flat)                             # CPU -> GPU (packed)
   x_batch = GPU.transpose(raw, BATCH, INPUT)
 
   # Forward (batched)
