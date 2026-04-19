@@ -4,7 +4,7 @@ puts "=" * 52
 puts
 
 # ---- 引数解析 ----
-# mruby examples/counter_demo.rb [method] [mode] [backend] [resolution]
+# mruby demo/counter_demo.rb [method] [mode] [backend] [resolution]
 # method:     skin | ncnn | both       (default: skin)
 # mode:       snap | pan               (default: snap)
 # backend:    cpu | gpu                (NCNN only, default: cpu)

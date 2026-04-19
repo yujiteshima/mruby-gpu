@@ -161,7 +161,7 @@ GPU が遅い条件:
 3. **YUYV→RGB 変換を GPU Compute Shader で** → 画像処理は GPU 向き（1 dispatch × 大データ）
 4. **mruby スクリプト側で `use_gpu: true/false` を切り替えるだけ** → 1 行の変更で最適な実行パスを選択
 
-### face_demo.rb での使い分け
+### demo/face_demo.rb での使い分け
 
 ```ruby
 # GPU が得意: 画像前処理 (1 dispatch × 大データ)
