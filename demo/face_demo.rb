@@ -115,10 +115,16 @@ loop do
   end
 
   # 6. テキストオーバーレイ
+  # 注: src/mrb_display.c のフォントは ASCII のみ対応。日本語は ? に化ける。
   elapsed_tmp = (Time.now - t0) * 1000.0
   fps_now = elapsed_tmp > 0 ? (1000.0 / elapsed_tmp) : 0
-  info = "#{USE_GPU ? "GPU" : "CPU"}  FPS:#{fps_now.round(0)}  #{faces.size}人"
+
+  # 左上(小・緑): モード + FPS
+  info = "#{USE_GPU ? "GPU" : "CPU"}  FPS:#{fps_now.round(0)}"
   rgb = disp.draw_text(rgb, W, H, 4, 4, info, 0, 255, 0, 2)
+
+  # 左上の下(大・黄色): 人数を目立たせる
+  rgb = disp.draw_text(rgb, W, H, 4, 28, "PEOPLE: #{faces.size}", 255, 255, 0, 4)
 
   # 7. 表示
   disp.show(rgb, W, H)
