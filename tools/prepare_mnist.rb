@@ -41,7 +41,15 @@ test_images = read_idx_images(File.join(DATA_DIR, "t10k-images-idx3-ubyte"))
 puts "Reading test labels..."
 test_labels = read_idx_labels(File.join(DATA_DIR, "t10k-labels-idx1-ubyte"))
 
-# Individual test images for inference demo
+# All test images concatenated: 10000 x 784 floats (for batched inference)
+puts "Writing test_images.bin..."
+File.binwrite(File.join(DATA_DIR, "test_images.bin"), test_images.pack("e*"))
+
+# All test labels as float32
+puts "Writing test_labels.bin..."
+File.binwrite(File.join(DATA_DIR, "test_labels.bin"), test_labels.map(&:to_f).pack("e*"))
+
+# Individual test images for the per-sample demo (examples/mnist.rb)
 puts "Writing individual test images..."
 10.times do |i|
   slice = test_images[i * 784, 784]

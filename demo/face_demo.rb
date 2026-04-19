@@ -114,7 +114,13 @@ loop do
                          0, 255, 0)
   end
 
-  # 6. 表示
+  # 6. テキストオーバーレイ
+  elapsed_tmp = (Time.now - t0) * 1000.0
+  fps_now = elapsed_tmp > 0 ? (1000.0 / elapsed_tmp) : 0
+  info = "#{USE_GPU ? "GPU" : "CPU"}  FPS:#{fps_now.round(0)}  #{faces.size}人"
+  rgb = disp.draw_text(rgb, W, H, 4, 4, info, 0, 255, 0, 2)
+
+  # 7. 表示
   disp.show(rgb, W, H)
 
   elapsed      = (Time.now - t0) * 1000.0

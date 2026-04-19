@@ -195,8 +195,8 @@ puts "  処理時間     : #{total_sec.round(1)} 秒"
 ## LT でのストーリー
 
 ```
-1. 「まず GPU で 100 万要素を 5ms で計算します」      → demo.rb
-2. 「次にリアルタイム顔認識」                         → face_demo.rb fast cpu (30fps)
+1. 「まず GPU で 100 万要素を 5ms で計算します」      → demo/vector_add.rb
+2. 「次にリアルタイム顔認識」                         → demo/face_demo.rb fast cpu (30fps)
 3. 「では会場の皆さんを数えます」                     → batch_count.rb
    - カメラを会場に向けて 10 秒録画
    - 「録画完了。GPU で 300 フレームを一括前処理します」
