@@ -1,0 +1,37 @@
+mruby-gpu — Third-party acknowledgements
+==========================================
+
+This project incorporates or depends on the following third-party
+components. Each retains its original license terms.
+
+------------------------------------------------------------
+UltraFace-slim  (bundled — models/ultraface-slim.{param,bin})
+------------------------------------------------------------
+Source : https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB
+Author : Linzaer
+License: MIT License
+
+The files models/ultraface-slim.param and models/ultraface-slim.bin
+are redistributed under the terms of the original MIT License.
+
+------------------------------------------------------------
+NCNN  (runtime dependency — not bundled)
+------------------------------------------------------------
+Source : https://github.com/Tencent/ncnn
+Author : Tencent
+License: BSD-3-Clause
+
+Users must install NCNN separately (see README).
+No NCNN source code or binaries are redistributed by this project.
+
+------------------------------------------------------------
+mruby
+------------------------------------------------------------
+Source : https://github.com/mruby/mruby
+License: MIT License
+
+------------------------------------------------------------
+Vulkan / SDL2
+------------------------------------------------------------
+System libraries provided by the OS / Khronos Group / SDL project.
+Not bundled.
