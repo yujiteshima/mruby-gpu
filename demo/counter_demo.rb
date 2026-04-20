@@ -127,6 +127,8 @@ loop do
   end
 
   # 一時停止中: 静止画 + PAUSED テキストを表示し続ける
+  # 再描画を 30fps に制限してビジーループを防ぐ (描画1反復で約8MB の
+  # 文字列アロケーションが発生するため、sleep なしだと GC が張り付く)
   if paused && last_rgb
     rgb = last_rgb.dup
     rgb = disp.draw_text(rgb, W, H, 4, 4,
@@ -134,6 +136,7 @@ loop do
     rgb = disp.draw_text(rgb, W, H, 4, H - 8 * SCALE - 4,
       "[SPACE] resume  [ESC] quit", 200, 200, 200, SCALE)
     disp.show(rgb, W, H)
+    sleep 0.033
     next
   end
 
